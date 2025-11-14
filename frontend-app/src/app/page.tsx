@@ -41,7 +41,10 @@ const DELETE_POST = gql`
 export default function Home() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [newUser, setNewUser] = useState({ name: '', email: '', age: '' });
+  
+  // ===== UBAH STATE INI =====
+  const [newUser, setNewUser] = useState({ name: '', email: '', password: '' }); 
+  
   const [newPost, setNewPost] = useState({ title: '', content: '', author: '', status: '' });
 
   // State untuk proteksi halaman
@@ -67,8 +70,6 @@ export default function Home() {
 
   const fetchUsers = async () => {
     try {
-      // Kita perlu menambahkan token ke header untuk request ini
-      // (Idealnya, apiClient di-setup untuk menambahkannya otomatis)
       const token = localStorage.getItem('token');
       const response = await userApi.getUsers(/* { headers: { Authorization: `Bearer ${token}` } } */);
       setUsers(response.data);
@@ -79,19 +80,18 @@ export default function Home() {
     }
   };
 
-  // ... (sisa handler: handleCreateUser, handleCreatePost, handleDeleteUser, handleDeletePost, getStatusBadge tetap sama)
+  // ===== UBAH HANDLER INI =====
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await userApi.createUser({
-        name: newUser.name,
-        email: newUser.email,
-        age: parseInt(newUser.age)
-      });
-      setNewUser({ name: '', email: '', age: '' });
+      // Menggunakan data state yang baru (name, email, password)
+      await userApi.createUser(newUser); 
+      setNewUser({ name: '', email: '', password: '' }); // Reset state baru
       fetchUsers();
     } catch (error) {
       console.error('Error creating user:', error);
+      // Tampilkan error jika username/email sudah ada
+      alert((error as any).response?.data?.message || 'Failed to create user');
     }
   };
 
@@ -140,7 +140,7 @@ export default function Home() {
     }
   };
 
-  // ===== FUNGSI LOGOUT DITAMBAHKAN =====
+  // ===== FUNGSI LOGOUT (dari langkah sebelumnya) =====
   const handleLogout = () => {
     localStorage.removeItem('token');
     router.push('/login');
@@ -156,12 +156,11 @@ export default function Home() {
     );
   }
 
-  // ===== JSX KONTEN HALAMAN (TETAP SAMA) =====
   return (
     <div className="min-h-screen bg-gray-100 py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         
-        {/* ===== BLOK JUDUL DAN LOGOUT YANG DIUBAH ===== */}
+        {/* ===== BLOK JUDUL DAN LOGOUT (dari langkah sebelumnya) ===== */}
         <div className="relative mb-12">
           <h1 className="text-4xl font-bold text-gray-900 text-center">
             My Task Management
@@ -180,14 +179,16 @@ export default function Home() {
           {/* Blok Users */}
           <div className="bg-white shadow rounded-lg overflow-hidden">
             <div className="bg-gray-50 p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900 text-center">Users</h2>
+              <h2 className="text-2xl font-bold text-gray-900 text-center">Add New User</h2>
             </div>
             <div className="p-6">
+              
+              {/* ===== FORM "ADD USER" DIMODIFIKASI ===== */}
               <form onSubmit={handleCreateUser} className="mb-6">
                 <div className="grid grid-cols-1 gap-4">
                   <input
                     type="text"
-                    placeholder="Name"
+                    placeholder="Name (for login)"
                     value={newUser.name}
                     onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
                     className="border rounded-md px-3 py-2"
@@ -201,14 +202,14 @@ export default function Home() {
                     className="border rounded-md px-3 py-2"
                     required
                   />
+                  {/* GANTI INPUT "AGE" DENGAN "PASSWORD" */}
                   <input
-                    type="number"
-                    placeholder="Age"
-                    value={newUser.age}
-                    onChange={(e) => setNewUser({ ...newUser, age: e.target.value })}
+                    type="password"
+                    placeholder="Password (min 6 characters)"
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
                     className="border rounded-md px-3 py-2"
-                    min="1"
-                    max="150"
+                    minLength={6}
                     required
                   />
                   <button
@@ -219,6 +220,8 @@ export default function Home() {
                   </button>
                 </div>
               </form>
+              
+              {/* ===== DAFTAR PENGGUNA DIMODIFIKASI ===== */}
               {loading ? (
                 <p>Loading...</p>
               ) : (
@@ -228,7 +231,8 @@ export default function Home() {
                       <div>
                         <p className="font-semibold">{user.name}</p>
                         <p className="text-gray-600 text-sm">{user.email}</p>
-                        <p className="text-gray-500 text-xs">Age: {user.age} • {user.role}</p>
+                        {/* Hapus 'age' dari tampilan */}
+                        <p className="text-gray-500 text-xs">{user.role}</p> 
                       </div>
                       <button
                         onClick={() => handleDeleteUser(user.id)}
@@ -243,7 +247,7 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Blok Posts */}
+          {/* Blok Posts (Tidak Berubah) */}
           <div className="bg-white shadow rounded-lg overflow-hidden">
             <div className="bg-gray-50 p-6 border-b border-gray-200">
               <h2 className="text-2xl font-bold text-gray-900 text-center">Posts</h2>

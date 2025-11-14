@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { authApi } from '@/lib/api'; // Kita akan tambahkan authApi
+import { userApi } from '@/lib/api'; // Ganti ke userApi
 
 export default function Register() {
-  const [username, setUsername] = useState('');
+  // Ubah 'username' menjadi 'name'
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,7 +17,8 @@ export default function Register() {
     e.preventDefault();
     setError('');
     try {
-      await authApi.register({ username, email, password });
+      // Kirim 'name', bukan 'username', dan panggil userApi.createUser
+      await userApi.createUser({ name, email, password });
       router.push('/login'); // Redirect ke login setelah sukses
     } catch (err: any) {
       console.error('Registration failed:', err);
@@ -33,9 +35,9 @@ export default function Register() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="text"
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Name (This will be your login name)" // Ubah placeholder
+            value={name} // Ubah
+            onChange={(e) => setName(e.target.value)} // Ubah
             className="w-full border rounded-md px-3 py-2"
             required
           />

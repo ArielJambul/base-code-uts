@@ -3,10 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { authApi } from '@/lib/api'; // Kita akan tambahkan authApi
+import { authApi } from '@/lib/api';
 
 export default function Login() {
-  const [username, setUsername] = useState('');
+  const [name, setName] = useState(''); // UBAH DARI 'username'
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const router = useRouter();
@@ -15,9 +15,14 @@ export default function Login() {
     e.preventDefault();
     setError('');
     try {
-      const response = await authApi.login({ username, password });
+      // Kirim 'name' bukan 'username'
+      const response = await authApi.login({ name, password }); 
       if (response.data.token) {
         localStorage.setItem('token', response.data.token);
+        
+        // Simpan info pengguna untuk ditampilkan (opsional tapi bagus)
+        localStorage.setItem('user', JSON.stringify(response.data.user)); 
+        
         router.push('/'); // Redirect ke halaman utama
       }
     } catch (err: any) {
@@ -35,9 +40,9 @@ export default function Login() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="text"
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Name" // UBAH DARI 'Username'
+            value={name} // UBAH DARI 'username'
+            onChange={(e) => setName(e.target.value)} // UBAH DARI 'setUsername'
             className="w-full border rounded-md px-3 py-2"
             required
           />
@@ -57,6 +62,7 @@ export default function Login() {
           </button>
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
         </form>
+        {/* Kita bisa biarkan link ini ke /register, atau hapus. Mari kita biarkan dulu. */}
         <p className="text-center text-gray-600 mt-4">
           Don't have an account?{' '}
           <Link href="/register" className="text-blue-500 hover:underline">

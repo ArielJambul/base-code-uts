@@ -1,17 +1,32 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
-const { validateUser, validateUserUpdate } = require('../middleware/validation');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { validateUser, validateUserUpdate, validateLogin } = require('../middleware/validation');
 
 const router = express.Router();
 
-// In-memory database (replace with real database in production)
+// In-memory database
 let users = [];
+
+// Rahasia JWT
+const JWT_SECRET = 'your-very-secret-key-please-change-me';
 
 // GET /api/users - Get all users
 router.get('/', (req, res) => {
   const { page, limit, role, search } = req.query;
-  
-  let filteredUsers = [...users];
+
+  // Sembunyikan password saat mengambil daftar pengguna
+  const usersToReturn = users.map(u => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role,
+    createdAt: u.createdAt,
+    updatedAt: u.updatedAt
+  }));
+
+  let filteredUsers = [...usersToReturn];
   
   // Filter by role
   if (role) {
@@ -26,7 +41,7 @@ router.get('/', (req, res) => {
     );
   }
   
-  // If pagination params provided, return paginated response
+  // ... (Logika paginasi tetap sama) ...
   if (page && limit) {
     const startIndex = (page - 1) * limit;
     const endIndex = page * limit;
@@ -44,7 +59,6 @@ router.get('/', (req, res) => {
     });
   }
   
-  // Otherwise return all users as simple array
   res.json(filteredUsers);
 });
 
@@ -59,38 +73,106 @@ router.get('/:id', (req, res) => {
     });
   }
   
-  res.json(user);
+  // Sembunyikan password
+  const userToReturn = {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt
+  };
+
+  res.json(userToReturn);
 });
 
-// POST /api/users - Create new user
-router.post('/', validateUser, (req, res) => {
-  const { name, email, age, role = 'user' } = req.body;
+// POST /api/users - Create new user (Registrasi)
+router.post('/', validateUser, async (req, res) => {
+  try {
+    const { name, email, password, role = 'user' } = req.body;
   
-  // Check if email already exists
-  const existingUser = users.find(u => u.email === email);
-  if (existingUser) {
-    return res.status(409).json({
-      error: 'Email already exists',
-      message: 'A user with this email already exists'
+    const existingUser = users.find(u => u.email === email || u.name === name);
+    if (existingUser) {
+      return res.status(409).json({
+        error: 'Conflict',
+        message: 'A user with this name or email already exists'
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
+    
+    const newUser = {
+      id: uuidv4(),
+      name,
+      email,
+      password: hashedPassword,
+      role,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    users.push(newUser);
+    
+    res.status(201).json({
+      message: 'User created successfully',
+      user: {
+        id: newUser.id,
+        name: newUser.name,
+        email: newUser.email,
+        role: newUser.role
+      }
     });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error', message: 'Failed to register user' });
   }
-  
-  const newUser = {
-    id: uuidv4(),
-    name,
-    email,
-    age,
-    role,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  };
-  
-  users.push(newUser);
-  
-  res.status(201).json({
-    message: 'User created successfully',
-    user: newUser
-  });
+});
+
+// ===================================
+// ENDPOINT LOGIN (YANG DIPERBAIKI)
+// ===================================
+router.post('/login', validateLogin, async (req, res) => {
+  try {
+    const { name, password } = req.body;
+
+    const user = users.find(u => u.name === name);
+    if (!user) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'Invalid credentials' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ error: 'Unauthorized', message: 'Invalid credentials' });
+    }
+
+    const payload = {
+      user: {
+        id: user.id,
+        name: user.name
+      }
+    };
+
+    // ===== INI BAGIAN YANG DIPERBAIKI =====
+    // Argumen yang benar adalah (payload, secret, options, callback)
+    jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' }, (err, token) => {
+      if (err) throw err;
+      res.json({
+        message: 'Login successful',
+        token,
+        user: {
+          id: user.id,
+          name: user.name,
+          email: user.email
+        }
+      });
+    });
+    // ====================================
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error', message: 'Failed to login' });
+  }
 });
 
 // PUT /api/users/:id - Update user
@@ -104,9 +186,8 @@ router.put('/:id', validateUserUpdate, (req, res) => {
     });
   }
   
-  const { name, email, age, role } = req.body;
+  const { name, email, role } = req.body;
   
-  // Check if email already exists (excluding current user)
   if (email) {
     const existingUser = users.find(u => u.email === email && u.id !== req.params.id);
     if (existingUser) {
@@ -121,7 +202,6 @@ router.put('/:id', validateUserUpdate, (req, res) => {
     ...users[userIndex],
     ...(name && { name }),
     ...(email && { email }),
-    ...(age && { age }),
     ...(role && { role }),
     updatedAt: new Date().toISOString()
   };
@@ -130,7 +210,12 @@ router.put('/:id', validateUserUpdate, (req, res) => {
   
   res.json({
     message: 'User updated successfully',
-    user: updatedUser
+    user: {
+      id: updatedUser.id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      role: updatedUser.role
+    }
   });
 });
 
@@ -149,7 +234,11 @@ router.delete('/:id', (req, res) => {
   
   res.json({
     message: 'User deleted successfully',
-    user: deletedUser
+    user: {
+      id: deletedUser.id,
+      name: deletedUser.name,
+      email: deletedUser.email
+    }
   });
 });
 

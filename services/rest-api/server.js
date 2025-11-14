@@ -1,9 +1,8 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
+const rateLimit = require('express-rate-limit'); // <--- Import
 const userRoutes = require('./routes/users');
-const authRoutes = require('./routes/auth'); // Tambahkan ini
 const { errorHandler } = require('./middleware/errorHandler');
 
 const app = express();
@@ -14,11 +13,11 @@ app.use(helmet());
 app.use(cors());
 
 // Rate limiting
-const limiter = rateLimit({
+const limiter = rateLimit({ // <--- INI BAGIAN YANG HILANG
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100 // limit each IP to 100 requests per windowMs
 });
-app.use(limiter);
+app.use(limiter); // <--- Baris 15 Anda yang error
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -35,7 +34,7 @@ app.get('/health', (req, res) => {
 
 // Routes
 app.use('/api/users', userRoutes);
-app.use('/api/auth', authRoutes); // Tambahkan ini
+// Pastikan rute '/api/auth' sudah tidak ada
 
 // Error handling middleware
 app.use(errorHandler);
