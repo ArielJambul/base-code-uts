@@ -32,32 +32,8 @@ app.use(cors({
 
 
 // In-memory data store (Kode Anda, tidak berubah)
-let posts = [
-  {
-    id: '1',
-    title: 'Welcome to GraphQL',
-    content: 'This is our first GraphQL post with subscriptions!',
-    author: 'GraphQL Team',
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: '2',
-    title: 'Real-time Updates',
-    content: 'Watch this space for real-time updates using GraphQL subscriptions.',
-    author: 'Development Team',
-    createdAt: new Date().toISOString(),
-  }
-];
-let comments = [
-  {
-    id: '1',
-    postId: '1',
-    content: 'Great introduction to GraphQL!',
-    author: 'John Doe',
-    createdAt: new Date().toISOString(),
-  }
-];
-
+let posts = [];
+let comments = [];
 
 // GraphQL type definitions (VERSI BERSIH TANPA KARAKTER SILUMAN)
 const typeDefs = `
